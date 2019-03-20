@@ -13,7 +13,7 @@ let userSchema = new mongoose.Schema({
     name: String,
     email: String,
     password: String,
-    permissions: Object,
+    roles: Array,
     active: Boolean,
     tokenLastIssued: Date,
     createdOn: Date,
@@ -38,6 +38,19 @@ function verifyToken(req, res, next) {
     });
 }
 
+function hasRole(roles) {
+    return hasRole[roles] || (hasRole[roles] = function (req, res, next) {
+        let doHasRole = false;
+
+        roles.forEach(role => {
+            if (req.user.roles.indexOf(role) !== -1) doHasRole = true;
+        });
+
+        if (!doHasRole) res.sendStatus(401);
+        else next();
+    });
+}
+
 app.get('/api/auth/verify', verifyToken, (req, res) => res.sendStatus(200));
 
 app.post('/api/auth/login', (req, res) => {
@@ -53,8 +66,11 @@ app.post('/api/auth/login', (req, res) => {
             const payload = {
                 "username": user.username,
                 "name": user.name,
-                "email": user.email
+                "email": user.email,
+                "roles": user.roles
             };
+
+            console.log(payload);
     
             const token = jwt.sign(payload, config.jwtsecret, {
                 "expiresIn": 86400 // 24 hours
@@ -69,11 +85,15 @@ app.post('/api/auth/login', (req, res) => {
     });
 });
 
-app.post('/api/protected', verifyToken, (req, res) => {
+app.get('/api/protected', verifyToken, (req, res) => {
     res.status(200).json({
         "error": false,
         "decoded": req.user
     });
+});
+
+app.get('/api/admin', [verifyToken, hasRole(['bullshit', 'admin'])], (req, res) => {
+    res.sendStatus(200);
 });
 
 app.listen(8080, () => console.log("Server listening on port 8080..."));
