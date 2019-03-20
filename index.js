@@ -13,6 +13,7 @@ function verifyToken(req, res, next) {
     jwt.verify(token, config.jwtsecret, (err, decoded) => {
         if (err) return res.status(401).send({ "auth": false, "message": "Token is not valid." });
 
+        req.user = decoded;
         next();
     });
 }
@@ -30,7 +31,7 @@ app.post('/api/auth/login', (req, res) => {
     let user = {
         "name": "Username",
         "username": username
-    }
+    };
 
     const token = jwt.sign(user, config.jwtsecret, {
         "expiresIn": 86400 // 24 hours
@@ -43,10 +44,11 @@ app.post('/api/auth/login', (req, res) => {
     });
 });
 
-app.post('/api/send/sms', verifyToken, (req, res) => {
+app.post('/api/protected', verifyToken, (req, res) => {
     res.json({
-        "error": false
-    })
+        "error": false,
+        "decoded": req.user
+    });
 });
 
 app.listen(8080, () => console.log("Server listening on port 8080..."));
